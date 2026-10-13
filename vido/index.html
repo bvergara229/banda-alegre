@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>La Banda Alegre de Vido</title>
+<style>
+*{box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Comic Sans MS","Chalkboard SE",sans-serif;background:linear-gradient(#d4f7e8,#fff1f7);min-height:100vh;overflow-x:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;transition:background 1s}
+body.arcoiris{background:linear-gradient(120deg,#ff9a9e,#fad0c4,#fbc2eb,#a6c1ee,#c2f0c2,#fff3a6);background-size:400% 400%;animation:arc 6s ease infinite}
+@keyframes arc{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
+h1{text-align:center;color:#2f9e8f;margin:10px 0;font-size:clamp(22px,5vw,44px);text-shadow:3px 3px 0 #fff}
+#ctrl{text-align:center;margin:6px}
+button{font-family:inherit;font-size:22px;border:none;border-radius:30px;padding:12px 28px;margin:4px;color:#fff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.2)}
+#empezar{background:#3cc45b;font-size:30px}#borrar{background:#ff8c42}
+#msg{text-align:center;font-size:22px;color:#7a4fd6;min-height:30px}
+#banda{display:flex;justify-content:center;gap:1vw;flex-wrap:nowrap;margin:10px 0;padding:0 6px}
+.pj{flex:1;min-width:0;max-width:140px;position:relative;cursor:pointer;filter:grayscale(1) opacity(.65);transition:filter .3s}
+.pj.on{filter:none}.pj.on svg{animation:baila .6s ease-in-out infinite alternate}
+.pj.hover{transform:scale(1.08)}
+@keyframes baila{0%{transform:scaleY(1) rotate(-4deg)}100%{transform:scaleY(1.06) translateY(-8px) rotate(4deg)}}
+.pj svg{width:100%;height:auto;display:block;transform-origin:50% 100%}
+.pj .nom{text-align:center;font-size:clamp(11px,2.8vw,18px);color:#444;font-weight:bold}
+.pj .ic{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:clamp(24px,5vw,44px)}
+#barra{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;padding:10px;margin:10px auto;max-width:900px}
+.cat{background:rgba(255,255,255,.75);border-radius:20px;padding:6px 10px;text-align:center}
+.cat b{display:block;font-size:16px;color:#555}
+.icono{display:inline-block;font-size:clamp(36px,7vw,56px);margin:4px;cursor:grab;touch-action:none}
+.icono.usado{opacity:.3}
+@media (max-width:480px){#barra{gap:6px;padding:6px}.icono{font-size:40px;margin:2px}button{font-size:18px;padding:10px 18px}#empezar{font-size:24px}}
+#fantasma{position:fixed;pointer-events:none;font-size:64px;z-index:9;display:none;transform:translate(-50%,-50%)}
+#confeti{position:fixed;inset:0;pointer-events:none;z-index:8}
+</style></head><body>
+<h1>🎶 La Banda Alegre de Vido 🎶</h1>
+<div id="ctrl"><button id="empezar">▶ Empezar</button><button id="borrar">🧽 Borrar todo</button></div>
+<div id="msg">¡Pulsa «Empezar» y arrastra un dibujito a un amigo!</div>
+<div id="banda"></div>
+<div id="barra"></div>
+<div id="fantasma"></div><canvas id="confeti"></canvas>
+<script>
+"use strict";
+const COLORES=["#f4845f","#f7c548","#6fcf97","#4fb3d9","#9b7fe6","#f27fb2","#c9a26b"];
+const NOMBRES=["Tilo","Mapi","Bruno","Lía","Pancho","Fifí","Totó"];
+const CATS=[["Ritmo (tambor)",[["🥁","bombo"],["👏","caja"],["🔔","platillo"]]],["Bajo",[["🦒","bajo1"],["🐢","bajo2"]]],["Melodía",[["🎹","piano"],["🎸","guitarra"],["🍭","mel1"],["🦋","mel2"],["🐝","mel3"]]],["Voces y efectos",[["🎤","ooh"],["🌻","lala"]]]];
+const banda=document.getElementById("banda"),barra=document.getElementById("barra");
+const pjs=[];
+function cara(c,i){
+const extra=[`<circle cx="60" cy="14" r="8" fill="${c}"/><rect x="58" y="18" width="4" height="14" fill="${c}"/>`,
+`<ellipse cx="34" cy="34" rx="10" ry="16" fill="${c}"/><ellipse cx="86" cy="34" rx="10" ry="16" fill="${c}"/>`,
+`<path d="M38 36 L48 14 L58 34 L68 14 L78 34 L84 22 L84 40 L36 40Z" fill="#ffd54a"/>`,
+`<path d="M40 32 q20 -30 40 0" fill="${c}"/><circle cx="84" cy="34" r="8" fill="#ff9ec7"/>`,
+`<rect x="34" y="26" width="52" height="12" rx="6" fill="#ffffff" opacity=".8"/><rect x="44" y="12" width="32" height="18" rx="6" fill="#ffffff" opacity=".8"/>`,
+`<circle cx="44" cy="30" r="9" fill="${c}"/><circle cx="60" cy="24" r="10" fill="${c}"/><circle cx="76" cy="30" r="9" fill="${c}"/>`,
+`<path d="M50 34 q-6 -20 6 -22 M70 34 q6 -20 -6 -22" stroke="${c}" stroke-width="6" fill="none" stroke-linecap="round"/>`][i];
+const boca=i%3===0?'<path d="M46 98 q14 16 28 0" stroke="#3a2a2a" stroke-width="4" fill="#fff" stroke-linecap="round"/>':i%3===1?'<path d="M48 98 q12 10 24 0" stroke="#3a2a2a" stroke-width="4" fill="none" stroke-linecap="round"/>':'<ellipse cx="60" cy="102" rx="9" ry="7" fill="#7a2e3a"/><ellipse cx="60" cy="105" rx="5" ry="3" fill="#ff8fa3"/>';
+return `<svg viewBox="0 0 120 210">${extra}<rect x="26" y="30" width="68" height="160" rx="34" fill="${c}"/><ellipse cx="60" cy="150" rx="22" ry="26" fill="#fff" opacity=".25"/><rect x="34" y="184" width="20" height="18" rx="9" fill="${c}" stroke="#0002" stroke-width="2"/><rect x="66" y="184" width="20" height="18" rx="9" fill="${c}" stroke="#0002" stroke-width="2"/><ellipse cx="46" cy="76" rx="12" ry="15" fill="#fff"/><ellipse cx="74" cy="76" rx="12" ry="15" fill="#fff"/><circle cx="48" cy="79" r="6.5" fill="#2b2b3a"/><circle cx="76" cy="79" r="6.5" fill="#2b2b3a"/><circle cx="50" cy="76" r="2.5" fill="#fff"/><circle cx="78" cy="76" r="2.5" fill="#fff"/><circle cx="36" cy="96" r="6" fill="#ff8fa3" opacity=".6"/><circle cx="84" cy="96" r="6" fill="#ff8fa3" opacity=".6"/>${boca}<path d="M26 120 q-14 10 -6 26 M94 120 q14 10 6 26" stroke="${c}" stroke-width="9" fill="none" stroke-linecap="round"/></svg>`;}
+COLORES.forEach((c,i)=>{const d=document.createElement("div");d.className="pj";d.innerHTML=cara(c,i)+'<div class="nom">'+NOMBRES[i]+'</div><div class="ic"></div>';d.onclick=()=>silenciar(i);banda.appendChild(d);pjs.push({el:d,son:null,ico:null});});
+CATS.forEach(([n,l])=>{const c=document.createElement("div");c.className="cat";c.innerHTML="<b>"+n+"</b>";l.forEach(([e,s])=>{const x=document.createElement("span");x.className="icono";x.textContent=e;x.dataset.son=s;c.appendChild(x);});barra.appendChild(c);});
+// ---- Audio ----
+let ctx=null,master,ruido,proxPaso=0,paso=0,timer=null;const BPM=115,SEMI=60/BPM/4;
+// Sol mayor
+const f=n=>440*Math.pow(2,(n-69)/12);
+const ACORDES=[[55,59,62],[52,55,59],[48,52,55],[50,54,57]];// G Em C D
+function iniciar(){if(!ctx){const AC=window.AudioContext||window.webkitAudioContext;ctx=new AC();master=ctx.createGain();master.gain.value=.5;master.connect(ctx.destination);
+ruido=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);const d=ruido.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}
+ctx.resume();if(!timer){proxPaso=ctx.currentTime+.1;timer=setInterval(planificar,25);}
+document.getElementById("msg").textContent="¡Arrastra un dibujito encima de un amigo! 🎶";document.getElementById("empezar").textContent="🎶 ¡Sonando!";}
+function env(g,t,a,v,dur){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);}
+function tono(t,fr,dur,tipo,v,vib){const o=ctx.createOscillator(),g=ctx.createGain();o.type=tipo;o.frequency.value=fr;if(vib){const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=5;lg.gain.value=fr*.012;l.connect(lg).connect(o.frequency);l.start(t);l.stop(t+dur+.05);}
+o.connect(g).connect(master);env(g,t,Math.min(.03,dur/3),v,dur);o.start(t);o.stop(t+dur+.05);return o;}
+function bombo(t){const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(40,t+.15);o.connect(g).connect(master);env(g,t,.005,.9,.3);o.start(t);o.stop(t+.35);}
+function tom(t,fr){const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.setValueAtTime(fr,t);o.frequency.exponentialRampToValueAtTime(fr*.6,t+.2);o.connect(g).connect(master);env(g,t,.005,.6,.25);o.start(t);o.stop(t+.3);ruidoF(t,"bandpass",900,.15,.05);}
+function ruidoF(t,tipo,fr,v,dur){const s=ctx.createBufferSource();s.buffer=ruido;const fl=ctx.createBiquadFilter();fl.type=tipo;fl.frequency.value=fr;const g=ctx.createGain();s.connect(fl).connect(g).connect(master);env(g,t,.003,v,dur);s.start(t);s.stop(t+dur+.05);}
+function voz(t,fr,dur,v,formante){const o=ctx.createOscillator();o.type="sawtooth";o.frequency.value=fr;const g=ctx.createGain();const l=ctx.createOscillator(),lg=ctx.createGain();l.frequency.value=5.5;lg.gain.value=fr*.015;l.connect(lg).connect(o.frequency);
+formante.forEach(ff=>{const b=ctx.createBiquadFilter();b.type="bandpass";b.frequency.value=ff;b.Q.value=8;o.connect(b);b.connect(g);});g.connect(master);env(g,t,.06,v,dur);o.start(t);l.start(t);o.stop(t+dur+.05);l.stop(t+dur+.05);}
+const MEL1=[[74,null,71,74,79,null,78,null,76,null,74,null,71,null,null,null],[76,null,71,76,79,null,76,null,74,null,71,null,67,null,null,null],[72,null,76,null,79,null,81,79,76,null,72,null,76,null,null,null],[74,null,78,null,81,null,78,null,76,null,74,null,72,null,71,null]];
+const MEL2=[86,null,83,null,86,88,86,null,83,null,81,83,79,null,null,null];
+const MEL3=[null,95,null,91,null,null,95,98,null,null,93,null,null,91,null,null];
+const cacheKS={};
+function bufKS(fr){const k=Math.round(fr);if(cacheKS[k])return cacheKS[k];const sr=ctx.sampleRate,L=Math.floor(sr*1.6),N=Math.round(sr/fr),b=ctx.createBuffer(1,L,sr),y=b.getChannelData(0);
+for(let i=0;i<N;i++)y[i]=Math.random()*2-1;for(let i=N;i<L;i++)y[i]=0.996*0.5*(y[i-N]+y[i-N+1]);return cacheKS[k]=b;}
+function cuerda(t,fr,v){const s=ctx.createBufferSource();s.buffer=bufKS(fr);const fl=ctx.createBiquadFilter();fl.type="lowpass";fl.frequency.value=3500;const g=ctx.createGain();g.gain.value=v;s.connect(fl).connect(g).connect(master);s.start(t);}
+function piano(t,fr,v){[[1,1],[2,.4],[3,.15],[4,.08]].forEach(([h,a])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.value=fr*h;o.connect(g).connect(master);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(v*a,t+.005);g.gain.exponentialRampToValueAtTime(0.0001,t+1.2/h+.3);o.start(t);o.stop(t+1.6);});}
+const SONIDOS={
+piano:(s,t,a)=>{const p=[0,1,2,null,1,null,2,1,null,0,null,2,null,1,0,null];const n=p[s];if(n!==null)piano(t,f(a[n]+12+(s>7&&n===0?12:0)),.2);if(s===0||s===10)a.forEach(x=>piano(t,f(x),.08));},
+guitarra:(s,t,a)=>{const ac=[a[0]-12,a[2]-12,a[0],a[1],a[2],a[0]+12];const r=s%8;if(r===0||r===5)ac.forEach((n,k)=>cuerda(t+k*.015,f(n),.22));else if(r===2||r===7)ac.slice(2).reverse().forEach((n,k)=>cuerda(t+k*.01,f(n),.14));},
+bombo:(s,t)=>{if(s===0||s===6||s===8||s===11)bombo(t);if(s===13)tom(t,220);if(s===14)tom(t,170);if(s===15)tom(t,120);},
+caja:(s,t)=>{if(s===4||s===12)ruidoF(t,"bandpass",2000,.6,.14);if(s===15)ruidoF(t,"bandpass",2200,.25,.06);},
+platillo:(s,t)=>{if(s%4===2)ruidoF(t,"highpass",8000,.28,.12);else if(s%2===1)ruidoF(t,"highpass",7000,.08,.04);},
+bajo1:(s,t,a)=>{if(s===0||s===8)tono(t,f(a[0]-24),SEMI*3,"triangle",.5);else if(s===3||s===11)tono(t,f(a[0]-12),SEMI*1.5,"triangle",.35);else if(s===14)tono(t,f(a[2]-24),SEMI*1.5,"triangle",.4);},
+bajo2:(s,t,a)=>{const p=[0,null,2,null,1,null,2,0,null,0,2,null,1,null,0,null];const n=p[s%16];if(n!==null)tono(t,f(a[n]-12),SEMI*.9,"sawtooth",.08);},
+mel1:(s,t,a,c)=>{const n=MEL1[c][s%16];if(n)tono(t,f(n),SEMI*1.7,"triangle",.25,true);},
+mel2:(s,t,a,c)=>{if(c%2===0)return;const n=MEL2[s%16];if(n)tono(t,f(n),SEMI*.8,"square",.06);},
+mel3:(s,t)=>{const n=MEL3[s%16];if(n)tono(t,f(n),SEMI*.6,"sine",.16);},
+ooh:(s,t,a)=>{if(s%8===0)a.forEach(n=>voz(t,f(n+12),SEMI*7.5,.3,[350,900]));},
+lala:(s,t,a)=>{const p={2:0,3:1,6:2,10:1,11:2,14:0};if(s in p)voz(t,f(a[p[s]]+24),SEMI*1.2,.55,[700,1150]);}
+};
+function planificar(){while(proxPaso<ctx.currentTime+.12){const comp=Math.floor(paso/16)%4,a=ACORDES[comp];pjs.forEach(p=>{if(p.son)SONIDOS[p.son](paso%16,proxPaso,a,comp);});proxPaso+=SEMI;paso++;}}
+// ---- Juego ----
+function activar(i,son,ico){if(!ctx)iniciar();const p=pjs[i];p.son=son;p.ico=ico;p.el.classList.add("on");p.el.querySelector(".ic").textContent=ico;revisar();}
+function silenciar(i){const p=pjs[i];p.son=null;p.ico=null;p.el.classList.remove("on");p.el.querySelector(".ic").textContent="";revisar();}
+function revisar(){const n=pjs.filter(p=>p.son).length;document.body.classList.toggle("arcoiris",n>=4);if(n>=4&&!fiesta){fiesta=true;lanzarConfeti();document.getElementById("msg").textContent="🎉 ¡Qué fiesta, Vido! 🎉";}if(n<4)fiesta=false;}
+document.getElementById("empezar").onclick=iniciar;
+document.getElementById("borrar").onclick=()=>pjs.forEach((p,i)=>silenciar(i));
+// arrastrar (pointer events: mouse + táctil)
+const fant=document.getElementById("fantasma");let arr=null;
+function bajo(x,y){fant.style.display="none";const e=document.elementFromPoint(x,y);fant.style.display=arr?"block":"none";const pj=e&&e.closest(".pj");return pj?[...banda.children].indexOf(pj):-1;}
+barra.addEventListener("pointerdown",e=>{const ic=e.target.closest(".icono");if(!ic)return;e.preventDefault();if(!ctx)iniciar();arr={son:ic.dataset.son,ico:ic.textContent};fant.textContent=arr.ico;fant.style.display="block";mover(e);});
+function mover(e){if(!arr)return;fant.style.left=e.clientX+"px";fant.style.top=e.clientY+"px";const i=bajo(e.clientX,e.clientY);pjs.forEach((p,j)=>p.el.classList.toggle("hover",j===i));}
+window.addEventListener("pointermove",mover);
+window.addEventListener("pointerup",e=>{if(!arr)return;const i=bajo(e.clientX,e.clientY);if(i>=0)activar(i,arr.son,arr.ico);arr=null;fant.style.display="none";pjs.forEach(p=>p.el.classList.remove("hover"));});
+document.addEventListener("touchmove",e=>{if(arr)e.preventDefault();},{passive:false});
+window.addEventListener("pointercancel",()=>{arr=null;fant.style.display="none";});
+// confeti
+let fiesta=false;const cv=document.getElementById("confeti"),cx=cv.getContext("2d");let piezas=[],anim=null;
+function lanzarConfeti(){cv.width=innerWidth;cv.height=innerHeight;for(let i=0;i<150;i++)piezas.push({x:Math.random()*cv.width,y:-Math.random()*cv.height,v:2+Math.random()*3,r:Math.random()*6,c:COLORES[i%7],w:6+Math.random()*6});if(!anim)anim=requestAnimationFrame(dibujar);}
+function dibujar(){cx.clearRect(0,0,cv.width,cv.height);piezas.forEach(p=>{p.y+=p.v;p.r+=.1;cx.fillStyle=p.c;cx.save();cx.translate(p.x+Math.sin(p.r)*10,p.y);cx.rotate(p.r);cx.fillRect(-p.w/2,-3,p.w,6);cx.restore();});piezas=piezas.filter(p=>p.y<cv.height+20);anim=piezas.length?requestAnimationFrame(dibujar):null;if(!anim)cx.clearRect(0,0,cv.width,cv.height);}
+window.__test={pjs,activo:()=>!!ctx&&ctx.state};
+</script></body></html>
